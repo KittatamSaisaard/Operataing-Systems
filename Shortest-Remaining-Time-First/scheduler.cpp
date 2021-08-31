@@ -85,37 +85,17 @@ int time_allowance(std::vector<Customer> &customers)
 
 void reorder(std::vector<Customer> &customers, std::deque<int> &queue, int customer_id, int queue_index){
 
-    std::cout << "queue size: " << queue.size() << ", queue: " << std::endl;
-    for (int i = 0; i < queue.size(); i++)
-    {
-        std::cout << queue[i] << " ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "customers[queue[" << queue_index << "]].slots_remaining: " << customers[queue[queue_index]].slots_remaining << std::endl;
-    std::cout << "customers[" << customer_id << "].slots_remaining: " << customers[customer_id].slots_remaining << std::endl;
     if (customers[queue[queue_index]].slots_remaining >= customers[customer_id].slots_remaining)
     {
-        std::cout << customers[queue[queue_index]].slots_remaining << " >= " << customers[customer_id].slots_remaining << std::endl;
-        std::cout << "Inserting customer_id: " << customer_id << " at index: " << queue_index << std::endl;
         std::deque<int>::iterator it = queue.begin()+queue_index;
         queue.insert(it, customer_id);
-        std::cout << "queue size: " << queue.size() << ", queue: " << std::endl;
-        for (int i = 0; i < queue.size(); i++)
-        {
-            std::cout << queue[i] << " ";
-        }
-        std::cout << std::endl;
         return;
     }
 
     if (customers[queue[queue_index]].slots_remaining < customers[customer_id].slots_remaining)
     {
-        std::cout << customers[queue[queue_index]].slots_remaining << " < " << customers[customer_id].slots_remaining << std::endl;
-        std::cout << "queue_index: " << queue_index << std::endl;
         if (queue_index == queue.size()-1)
         {
-            std::cout << "Inserting customer_id: " << customer_id << " at index: " << queue_index << std::endl;
             std::deque<int>::iterator it = queue.end();
             queue.insert(it, customer_id);
             return;
@@ -187,7 +167,6 @@ int main(int argc, char *argv[])
     bool all_done = false;
     for (int current_time = 0; !all_done; current_time++)
     {
-        // std::cout << "current_time: " << current_time << std::endl;
         // welcome newly arrived customers
         while (!arrival_events.empty() && (current_time == arrival_events[0].event_time))
         {
@@ -201,8 +180,6 @@ int main(int argc, char *argv[])
                     queue.pop_front();
                 }
             }
-            std::cout << "New Customer Arrived with customer_id: " << arrival_events[0].customer_id << std::endl;
-            std::cout << "queue.size(): " << queue.size() << std::endl;
             if (queue.empty())
             {
                 queue.push_back(arrival_events[0].customer_id);
@@ -218,47 +195,23 @@ int main(int argc, char *argv[])
             }         
             arrival_events.pop_front();
         }
-        // check if we need to take a customer off the machine
-        // if (current_id >= 0)
-        // {
-            if (current_id >= 0 && current_time == time_out)
-            {
-                // std::cout << "Triggered current_id: " << current_id << std::endl;
-                // int last_run = current_time - customers[current_id].playing_since;
-                // customers[current_id].slots_remaining -= last_run;
-                // std::cout << "customers[" << current_id << "].slots_remaining: " << customers[current_id].slots_remaining << std::endl;
-                // if (customers[current_id].slots_remaining <= 0)
-                // {
-                queue.pop_front();
-                // }
-                current_id = -1; // the machine is free now
-            }
-        // }
+        if (current_id >= 0 && current_time == time_out)
+        {
+            queue.pop_front();
+            current_id = -1; // the machine is free now
+        }
+
         // if machine is empty, schedule a new customer
         if (current_id == -1)
         {
             if (!queue.empty()) // is anyone waiting?
             {
-                current_id = queue.front();// queue_regular.pop_front();
-                
-                // if the first customer arrives, let them use their entire play time
-                // if (current_id == 0)
-                // {
-                //     time_out = current_time + customers[current_id].slots_remaining;
-                // } 
-                // else 
-                // if (TIME_ALLOWANCE > customers[current_id].slots_remaining)
-                // {
-                    time_out = current_time + customers[current_id].slots_remaining;
-                // }
-                // else
-                // {
-                //     time_out = current_time + TIME_ALLOWANCE;
-                // }
+                current_id = queue.front();
+                time_out = current_time + customers[current_id].slots_remaining;
                 customers[current_id].playing_since = current_time;
             }
         }
-        std::cout << "OUTPUT: " << current_time << " " << current_id << std::endl;
+
         print_state(out_file, current_time, current_id, arrival_events/*, queue*/);
 
         // exit loop when there are no new arrivals, no waiting and no playing customers
