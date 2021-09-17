@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
         // welcome newly arrived customers
         while (!arrival_events.empty() && (current_time == arrival_events[0].event_time))
         {
-            if (customers[current_id].playing_since > 0)
+            if (customers[current_id].slots_remaining > 0)
             {
                 int last_run = current_time - customers[current_id].playing_since;
                 customers[current_id].slots_remaining -= last_run;
