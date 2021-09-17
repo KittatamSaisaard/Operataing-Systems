@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
             {
                 queue_high.push_back(arrival_events[0].customer_id);
             } 
-            else // regulaar priority customer
+            else // regular priority customer
             {
                 queue_regular.push_back(arrival_events[0].customer_id);
             }
@@ -173,12 +173,9 @@ int main(int argc, char *argv[])
                     if (customers[current_id].priority == 0)
                     {
                         queue_high.push_back(current_id);
-                    }
-                    else
-                    {
+                    } else {
                         queue_regular.push_back(current_id);
                     }
-                    
                 }
                 current_id = -1; // the machine is free now
             }
@@ -199,16 +196,10 @@ int main(int argc, char *argv[])
                 }
                 
                 // if the first customer arrives, let them use their entire play time
-                if (current_id == 0)
+                if (TIME_ALLOWANCE > customers[current_id].slots_remaining)
                 {
                     time_out = current_time + customers[current_id].slots_remaining;
-                } 
-                else if (TIME_ALLOWANCE > customers[current_id].slots_remaining)
-                {
-                    time_out = current_time + customers[current_id].slots_remaining;
-                }
-                else
-                {
+                } else {
                     time_out = current_time + TIME_ALLOWANCE;
                 }
                 customers[current_id].playing_since = current_time;
