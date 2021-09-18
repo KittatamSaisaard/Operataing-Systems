@@ -170,6 +170,8 @@ int main(int argc, char *argv[])
         regular_queue_length = queue_regular.size();
 
         // aging to prevent starvation
+        /* if the first person waiting in the regular queue exceeds the aging time allowance,
+        they will be put into the high priorty queue using SJF */
         if (!queue_regular.empty())
         {
             if (current_time - customers[queue_regular.front()].arrival_time >= AGING_TIME_ALLOWANCE)
@@ -273,7 +275,7 @@ int main(int argc, char *argv[])
         {
             if (!queue_high.empty() || !queue_regular.empty()) // is anyone waiting?
             {
-                // ensures that the queue with high priorty all goes first
+                // ensures that all of the customers in the high queue all use the machine first before the regular queue
                 if (!queue_high.empty())
                 {
                     current_id = queue_high.front();
@@ -283,6 +285,7 @@ int main(int argc, char *argv[])
                     queue_regular.pop_front();
                 }
                 
+                // allocate playing time to the customer
                 if (TIME_ALLOWANCE > customers[current_id].slots_remaining)
                 {
                     time_out = current_time + customers[current_id].slots_remaining;
