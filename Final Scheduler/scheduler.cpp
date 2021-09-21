@@ -17,6 +17,7 @@ andrey.kan@adelaide.edu.au
 const int REGULAR_TIME_ALLOWANCE = 10;
 const int HIGH_TIME_ALLOWANCE = 20;
 const int PRINT_LOG = 0; // print detailed execution trace
+int TIME_ALLOWANCE = HIGH_TIME_ALLOWANCE;
 
 class Customer
 {
