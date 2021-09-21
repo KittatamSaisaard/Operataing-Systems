@@ -13,9 +13,8 @@ andrey.kan@adelaide.edu.au
 #include <vector>
 
 // std is a namespace: https://www.cplusplus.com/doc/oldtutorial/namespaces/
-const int REGULAR_TIME_ALLOWANCE = 5;
+const int REGULAR_TIME_ALLOWANCE = 10;
 const int HIGH_TIME_ALLOWANCE = 20;
-const int AGING_TIME_ALLOWANCE = 20;
 const int PRINT_LOG = 0; // print detailed execution trace
 int TIME_ALLOWANCE = HIGH_TIME_ALLOWANCE;  // allow the customer to use up to this number of time slots at once
 
@@ -111,6 +110,12 @@ void print_state(
 // Orders the queue in ascending order by the customer's remaining slot time
 void SJF(std::vector<Customer> &customers, std::deque<int> &queue, int customer_id, int queue_index){
 
+    if (queue.empty())
+    {
+        queue.push_back(customer_id);
+        return;
+    }
+
     if (customers[queue[queue_index]].slots_remaining >= customers[customer_id].slots_remaining)
     {
         std::deque<int>::iterator it = queue.begin()+queue_index;
@@ -160,35 +165,13 @@ int main(int argc, char *argv[])
     int time_out = -1; // time when current customer will be preempted
     std::deque<int> queue_regular; // regular priority waiting queue
     std::deque<int> queue_high; // high priority waiting queue
+    std::deque<int> queue_same; // customers that arrive at the same time will be placed in this queue
 
     // step by step simulation of each time slot
     bool all_done = false;
-    int high_queue_length, regular_queue_length = 0;
+    int same_arrival_count, new_arrival_between_same_arrival_playing = 0;
     for (int current_time = 0; !all_done; current_time++)
     {
-        high_queue_length = queue_high.size();
-        regular_queue_length = queue_regular.size();
-
-        // aging to prevent starvation
-        /* if the first person waiting in the regular queue exceeds the aging time allowance,
-        they will be put into the high priorty queue using SJF */
-        if (!queue_regular.empty())
-        {
-            if (current_time - customers[queue_regular.front()].arrival_time >= AGING_TIME_ALLOWANCE)
-            {
-                if (customers[queue_regular.front()].priority == 0)
-                {
-                    if (queue_high.empty())
-                    {
-                        queue_high.push_back(queue_regular.front());
-                    } else {
-                        SJF(customers, queue_high, queue_regular.front(), 0);
-                    }
-                    queue_regular.pop_front();
-                }
-            }
-        }
-
         // check if we need to take a customer off the machine
         if (current_id >= 0 && current_time == time_out)
         {
@@ -196,59 +179,40 @@ int main(int argc, char *argv[])
             customers[current_id].slots_remaining -= last_run;
             if (customers[current_id].slots_remaining > 0)
             {
-                if (high_queue_length >= regular_queue_length)
+                if (customers[current_id].priority == 0)
                 {
-                    if (queue_regular.empty())
-                    {
-                        queue_regular.push_back(current_id);
-                    } else {
-                        SJF(customers, queue_regular, current_id, 0);
-                    }
+                    SJF(customers, queue_high, current_id, 0);
                 } else {
-                    if (customers[current_id].priority == 0)
-                    {
-                        queue_high.push_back(current_id);
-                    } else {
-                        if (queue_regular.empty())
-                        {
-                            queue_regular.push_back(current_id);
-                        } else {
-                            SJF(customers, queue_regular, current_id, 0);
-                        }
-                    }
+                    SJF(customers, queue_regular, current_id, 0);
                 }
             }
-            current_id = -1; // the machine is free now
+             current_id = -1; // the machine is free now
         }
 
+        int same_arrival_time = -1;
         // welcome newly arrived customers
         while (!arrival_events.empty() && (current_time == arrival_events[0].event_time))
         {
-            if (current_id >= 0)
+            if (current_id != -1 && arrival_events[0].customer_id > 0)
             {
                 int last_run = current_time - customers[current_id].playing_since;
                 customers[current_id].slots_remaining -= last_run;
                 if (customers[current_id].slots_remaining > 0)
                 {
-                    if (high_queue_length >= regular_queue_length)
+                    if (customers[current_id].priority == 0)
                     {
-                        if (queue_regular.empty())
-                        {
-                            queue_regular.push_back(current_id);
-                        } else {
-                            SJF(customers, queue_regular, current_id, 0);
-                        }
-                    } else {
-                        if (customers[current_id].priority == 0)
+                        if (new_arrival_between_same_arrival_playing > 0)
                         {
                             queue_high.push_back(current_id);
                         } else {
-                            if (queue_regular.empty())
-                            {
-                                queue_regular.push_back(current_id);
-                            } else {
-                                SJF(customers, queue_regular, current_id, 0);
-                            }
+                            SJF(customers, queue_high, current_id, 0); 
+                        }
+                    } else {
+                       if (new_arrival_between_same_arrival_playing > 0)
+                        {
+                            queue_regular.push_back(current_id);
+                        } else {
+                            SJF(customers, queue_regular, current_id, 0); 
                         }
                     }
                 }
@@ -256,35 +220,56 @@ int main(int argc, char *argv[])
                 current_id = time_out = -1;
             }
 
-            // when a new customer arrives, put them in front of the high priority queue
-            // so that they will play the machine instantly
-            queue_high.push_front(arrival_events[0].customer_id);
-
-            if (customers[arrival_events[0].customer_id].priority == 1)
+            if (same_arrival_time == current_time)
             {
-                TIME_ALLOWANCE = REGULAR_TIME_ALLOWANCE;
+                queue_same.push_back(arrival_events[0].customer_id);
+            } else if (arrival_events.size() > 1 && arrival_events[0].event_time == arrival_events[1].event_time)
+            {
+                queue_same.push_back(arrival_events[0].customer_id);
+                same_arrival_time = current_time;
             } else {
-                TIME_ALLOWANCE = HIGH_TIME_ALLOWANCE;
+                if (!queue_same.empty())
+                {
+                    new_arrival_between_same_arrival_playing++;
+                }
+                queue_high.push_front(arrival_events[0].customer_id);
             }
-
             arrival_events.pop_front();
         }
 
         // if machine is empty, schedule a new customer
         if (current_id == -1)
         {
-            if (!queue_high.empty() || !queue_regular.empty()) // is anyone waiting?
+            if (!queue_same.empty() || !queue_high.empty() || !queue_regular.empty()) // is anyone waiting?
             {
-                // ensures that all of the customers in the high queue all use the machine first before the regular queue
-                if (!queue_high.empty())
+                // ensures that customers that arrive at the same time all go first and then 
+                // the customers in the high queue all use the machine first before the regular queue
+                if (!queue_same.empty())
+                {
+                    current_id = queue_same.front();
+                    queue_same.pop_front();
+                    TIME_ALLOWANCE = 1;
+                    if (new_arrival_between_same_arrival_playing > 0 && queue_same.empty())
+                    {
+                        for (int i = 0; i < new_arrival_between_same_arrival_playing; i++)
+                        {
+                           int temp_customer = queue_high.front();
+                           queue_high.pop_front();
+                           queue_same.push_back(temp_customer);
+                        }
+                        new_arrival_between_same_arrival_playing = 0;
+                    }
+                } else if (!queue_high.empty())
                 {
                     current_id = queue_high.front();
                     queue_high.pop_front();
+                    TIME_ALLOWANCE = HIGH_TIME_ALLOWANCE;
                 } else {
                     current_id = queue_regular.front();
                     queue_regular.pop_front();
+                    TIME_ALLOWANCE = REGULAR_TIME_ALLOWANCE;
                 }
-                
+
                 // allocate playing time to the customer
                 if (TIME_ALLOWANCE > customers[current_id].slots_remaining)
                 {
@@ -292,13 +277,14 @@ int main(int argc, char *argv[])
                 } else {
                     time_out = current_time + TIME_ALLOWANCE;
                 }
+                    
                 customers[current_id].playing_since = current_time;
             }
         }
         print_state(out_file, current_time, current_id, arrival_events, queue_regular, queue_high);
 
         // exit loop when there are no new arrivals, no waiting and no playing customers
-        all_done = (arrival_events.empty() && queue_regular.empty() && queue_high.empty() && (current_id == -1));
+        all_done = (arrival_events.empty() && queue_regular.empty() && queue_high.empty() && queue_same.empty() && (current_id == -1));
     }
 
     return 0;
