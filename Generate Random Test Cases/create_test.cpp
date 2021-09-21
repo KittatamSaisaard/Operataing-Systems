@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     std::ofstream out_file(argv[1]);
     if (!out_file)
     {
-        std::cerr << "Cannot open one the output file." << std::endl;
+        std::cerr << "Cannot open the output file." << std::endl;
         return -1;
     }
 
